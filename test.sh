@@ -1,18 +1,8 @@
 #!/bin/bash
 
-#IFS=$'\n'
-catalogue=~
-extension=sh
-extension=$(echo "."$extension)
+IFS=$'\n'
 
-test_array=(dupa jasia pierdzi)
-for i in "${test_array[@]}" 
-do 
-	echo $i 
+for paramater in $@
+do
+	echo $paramater
 done
-
-array=()
-while IFS= read -r; do
-    array+=("$REPLY")
-done < <(find $catalogue -name "*$extension")
-printf '%s\n' "${array[@]}"
