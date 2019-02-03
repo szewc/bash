@@ -208,7 +208,7 @@ if [ ! -z "$CORE" ]; then
 elif [ ! -z "$OFFSET" ]; then
 	prefix_store
 else
-	echo "Do you want to load core dump file?"
+	echo "(OPTIONAL) Do you want to load core dump file?"
 	echo "It will be used to get offset values"
 	select option in "No" "Yes"; do
 	        case $option in
@@ -331,10 +331,10 @@ if [ -z $SUFFIX ]; then
 echo "Select the suffix for the addresses to be recognized by"
 select option in "Use default suffix )" "Input suffix"; do
 	case $option in
-                "Use default suffix )" )
+        "Use default suffix )" )
 			SUFFIX=")";
 			break;;
-                "Input suffix" ) 
+        "Input suffix" ) 
 			echo "Input the suffix, special characters are allowed"
 			read -p "SUFFIX should be " -e SUFFIX
 			break;;
@@ -354,7 +354,6 @@ if [[ -z $OFFSET && -z $CORE || "$offset_invalid" = 1 ]]; then
 	offset_store
 elif [[ ! -z $OFFSET && ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]]; then
 	echo "You did attempt to set OFFSET as ""$OFFSET"
-
 	echo "Do not use a leading value like 0x for OFFSET"
 	sleep 2
 	offset_store
@@ -368,20 +367,21 @@ fi
 
 offset_store() {
 # select address offset using default or user input
-echo "(OPTIONAL) Select the memory mapping offset for the addresses"
+echo "Select the memory mapping offset for the addresses"
 echo "This is single value mode only. To dynamically load offset values, load the core dump file."
 echo "Select option 1. (default, offset=0) if you don't want to calculate it."
 select option in "Use default offset 0" "Input offset"; do
 	case $option in
-                "Use default offset 0" )
-			OFFSET="0";
-			break;;
-                "Input offset" ) 
-			echo "Input the offset value, in hexadecimal notation."
-			echo "Example offset: 0c3a9"
-			echo "Do not use a leading value like '0x'. Case sensitive."
-			echo "Offset value will be subtracted from the address value."
-			read -p "OFFSET should be " -e OFFSET
+            "Use default offset 0" )
+				OFFSET="0"
+				echo "OFFSET set is "$OFFSET
+				break;;
+            "Input offset" ) 
+				echo "Input the offset value, in hexadecimal notation."
+				echo "Example offset: 0c3a9"
+				echo "Do not use a leading value like '0x'. Case sensitive."
+				echo "Offset value will be subtracted from the address value."
+				read -p "OFFSET should be " -e OFFSET
 			if [ ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]; then
 				let offset_invalid=1
 				echo "Do not use a leading value like 0x"
