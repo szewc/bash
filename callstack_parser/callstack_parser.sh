@@ -25,7 +25,8 @@ callstack_parser.sh
 	-s, --suffix "def"
 	-o, --offset "08ab"
 	-m, --symbols "/path/file.debug"
-	-b, --symbols-package "/path/xxx-debug-symbols"
+		// or "/path/unstripped.lib"
+	-y, --symbols-package "/path/xxx-debug-symbols"
 	-c, --core "/path/to/core_dump"
 	-h, --help
 
@@ -37,8 +38,10 @@ example 2:
 ./callstack_parser.sh --backtrace "~/log/backtrace.txt" -p "(+a" --symbols-package "~/random/xxx-debug-symbols.tgz"
 
 example 3: 
-// for single lib only
+// symbols for single lib only
 ./callstack_parser.sh -m "/path/to/738a252ff76faa795ce57a86f5852b8c.debug"
+// or unstripped library
+./callstack_parser.sh -m "/path/to/unstripped.lib" -b "~/log/backtrace.txt" -p "(+a"
 
 
 Repository is https://github.com/szewc/bash/callstack_parser/
@@ -198,14 +201,16 @@ if [ ! -z "$CORE" ]; then
 	prefix_store
 	symbols_select
 	translate_file
+elif [ ! -z "$OFFSET" ]; then
+	prefix_store
 else
 	echo "Do you want to load core dump file?"
 	echo "It will be used to get offset values"
-	select option in "Yes" "No"; do
+	select option in "No" "Yes"; do
 	        case $option in
+	        	"No" ) prefix_store; break;;
 	        	"Yes" ) core_select; break;;
-	            "No" ) break;;
-				*) echo "invalid option";;
+	            *) echo "invalid option";;
 	        esac
 	done
 fi
@@ -310,6 +315,8 @@ select option in "Use default prefix (+0x" "Input prefix"; do
         esac
 	done
 fi
+# properly escape [ and ]
+PREFIX=$(echo "$PREFIX" | sed 's/\[/\\\[/')
 echo "PREFIX set is "$PREFIX
 suffix_store
 }
@@ -331,6 +338,8 @@ select option in "Use default suffix )" "Input suffix"; do
         esac
 	done
 fi
+# properly escape [ and ]
+SUFFIX=$(echo "$SUFFIX" | sed 's/\]/\\\]/')
 echo "SUFFIX set is ""$SUFFIX"
 offset_evaluate
 }
@@ -339,8 +348,9 @@ offset_evaluate
 offset_evaluate() {
 if [[ -z $OFFSET && -z $CORE || "$offset_invalid" = 1 ]]; then
 	offset_store
-elif [[ ! -z $OFFSET && ! -z $(echo "$OFFSET" | grep -i -o '\b0\x*') ]]; then
-	echo "OFFSET has been set as ""$OFFSET"
+elif [[ ! -z $OFFSET && ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]]; then
+	echo "You did attempt to set OFFSET as ""$OFFSET"
+
 	echo "Do not use a leading value like 0x for OFFSET"
 	sleep 2
 	offset_store
@@ -368,7 +378,7 @@ select option in "Use default offset 0" "Input offset"; do
 			echo "Do not use a leading value like '0x'. Case sensitive."
 			echo "Offset value will be subtracted from the address value."
 			read -p "OFFSET should be " -e OFFSET
-			if [ ! -z $(echo "$OFFSET" | grep -i -o '\b0\x*') ]; then
+			if [ ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]; then
 				let offset_invalid=1
 				echo "Do not use a leading value like 0x"
 				sleep 2
@@ -476,7 +486,8 @@ symbols_evaluate() {
 # find main addressing file and available libs
 if [ ! -z "$SYMBOLS" ]; then
 	echo "SYMBOLS .debug file set manually is "$SYMBOLS
-	translate_file
+	echo "This file will be used for all of the provided addresses"
+	let is_symbols_set=1
 elif [[ $SYMBOLS_PACKAGE =~ \.t?gz$ ]]; then
 	FILE=$(basename $SYMBOLS_PACKAGE)
 	echo "File "$FILE" is compressed as .tar.gz / .tgz"
@@ -485,18 +496,18 @@ elif [[ $SYMBOLS_PACKAGE =~ \.t?gz$ ]]; then
 	    case $yn in
 	        Yes ) 
 			cd $(dirname $SYMBOLS_PACKAGE) &> /dev/null
-			exec tar -zxvf $FILE;
-			sync;
-			SYMBOLS_PACKAGE=$(sed 's/\.ta*r*\.*gz$//' <(echo $SYMBOLS_PACKAGE));
+			tar zxvf $FILE
+			sync
+			SYMBOLS_PACKAGE=$(sed 's/\.ta*r*\.*gz$//' <(echo $SYMBOLS_PACKAGE))
 			cd - &> /dev/null
-			echo "SYMBOLS_PACKAGE set is "$SYMBOLS_PACKAGE;
-			CONTENTS=$(find $SYMBOLS_PACKAGE -name *contents);
-			echo "Main addressing file is "$CONTENTS;
-			LIBS=$(cat $CONTENTS | grep -o -P '[\S]*.sym$' | sed 's/\.sym//');
-			echo "Listed LIBS with available symbols are: "$LIBS;
+			echo "SYMBOLS_PACKAGE set is "$SYMBOLS_PACKAGE
+			CONTENTS=$(find $SYMBOLS_PACKAGE -name *contents)
+			echo "Main addressing file is "$CONTENTS
+			LIBS=$(cat $CONTENTS | grep -o -P '[\S]*.sym$' | sed 's/\.sym//')
+			echo "Listed LIBS with available symbols are: "$LIBS
 			break;;
 	        No ) 
-			echo "Program requires an extracted package, exiting.";
+			echo "Program requires an extracted package, exiting."
 			exit;;
 	    esac
 	done
@@ -518,11 +529,31 @@ translate() {
 echo "----------"
 LIB=$(echo $i | grep -o "$LIBS")
 if [ -z "$LIB" ]; then
-	if [ -z $(echo $i | grep -o '[A-Za-z\.\_\-]\+\.so') ]; then
+	if [[ $is_symbols_set = 1 ]]; then
+		# beginning of translate from single file
+		a=$((a + 1))
+		echo "Operation no. "$a
+		j=$(echo $i | grep -o "$PREFIX[a-zA-Z0-9]\+" | sed "s/$PREFIX//")
+		# applying OFFSET from CORE
+		if [[ ! -z $CORE && $is_core_contents = 1 ]]; then
+			OFFSET=$(echo "$CORE" | grep -o -E ".*r-xp.*${LIB}.*" | grep -o -P '[0-9A-Za-z-]* r-xp' | sed 's/-.*$//')
+		elif [[ ! -z $CORE && $is_core_file = 1 ]]; then
+			OFFSET=$(grep -o -E ".*r-xp.*${LIB}.*" < $CORE | grep -o -P '[0-9A-Za-z-]* r-xp' | sed 's/-.*$//')
+		fi
+		# calculating absolute value of the offset (from core or if set by hand)
+		if [[ "$OFFSET" != 0 ]]; then
+			OFFSET=${OFFSET#-}
+		fi
+		# applying offset
+		l=$(printf "%x\n" $((0x$j-0x$OFFSET)))
+		echo "Translating address "$l
+		addr2line -fsp  -e $SYMBOLS -a $l | c++filt >> stack.out
+		# end of translate from single file
+	elif [ -z $(echo $i | grep -o '[A-Za-z\.\_\-]\+\.so') ]; then
 		echo "There is no recognized library for line"
 		echo $i
 	elif [ -z $(echo $i | grep -o '[A-Za-z\.\_\-]\+\.so' | grep "$LIBS") ]; then
-		echo $(echo $i | grep -o '[A-Za-z\.\-]\+\.so')" is not a recognized library or has no symbols"
+		echo $(echo $i | grep -o '[A-Za-z\.\-]\+\.so')" is not recognized library or has no symbols"
 	else
 		echo "Library "$(echo $i | grep -o '[A-Za-z\.\_\-]\+\.so')" has no debug symbols"
 	fi
@@ -604,7 +635,7 @@ fi
 }
 
 
-OPTS=$(getopt -o b:p:s:o:m:b:c:h --long backtrace:,prefix:,suffix:,offset:,symbols:,symbols-package:,core:,help -n 'callstack_parser.sh' -- "$@")
+OPTS=$(getopt -o b:p:s:o:m:y:c:h --long backtrace:,prefix:,suffix:,offset:,symbols:,symbols-package:,core:,help -n 'callstack_parser.sh' -- "$@")
 if [ $? != 0 ] ; then help_info ; exit 1 ; fi
 	eval set -- "$OPTS"
 while true; do
@@ -614,7 +645,7 @@ while true; do
 		-s | --suffix ) SUFFIX="$2"; shift 2;;
 		-o | --offset ) OFFSET="$2"; shift 2;;
 		-m | --symbols ) SYMBOLS="$2"; shift 2;;
-		-b | --symbols-package ) SYMBOLS_PACKAGE="$2"; shift 2;;
+		-y | --symbols-package ) SYMBOLS_PACKAGE="$2"; shift 2;;
 		-c | --core ) CORE="$2"; shift 2;;
 		-h | --help ) help_info; break;;
 		-- ) shift; break ;;
