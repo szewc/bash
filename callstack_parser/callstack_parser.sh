@@ -123,19 +123,23 @@ backtrace_select() {
 # store it to $BACKTRACE if no $BACKTRACE is set
 eval BACKTRACE=$BACKTRACE
 if [ ! -z "$BACKTRACE" ]; then 
+	if [ ! -f "$BACKTRACE" ]; then
+		echo $BACKTRACE" - file not found. Exiting."
+		exit 1
+	fi
 	echo "BACKTRACE set is "$BACKTRACE
 	core_evaluate
 	symbols_select
 	translate_file
 else
-        echo "How do you want to input backtrace log?"
-        select option in "Paste log contents" "Provide path to log" "Select the log file via file manager"; do
-            case $option in
-                "Paste log contents" ) backtrace_store_contents; break;;
-                "Provide path to log" ) backtrace_store_path; break;;
-		"Select the log file via file manager" ) backtrace_store_manager; break;;
-		*) echo "invalid option";;
-            esac
+    echo "How do you want to input backtrace log?"
+    select option in "Paste log contents" "Provide path to log" "Select the log file via file manager"; do
+        case $option in
+            "Paste log contents" ) backtrace_store_contents; break;;
+            "Provide path to log" ) backtrace_store_path; break;;
+			"Select the log file via file manager" ) backtrace_store_manager; break;;
+			*) echo "invalid option";;
+        esac
 	done
 fi
 }
@@ -488,6 +492,7 @@ if [ ! -z "$SYMBOLS" ]; then
 	echo "SYMBOLS .debug file set manually is "$SYMBOLS
 	echo "This file will be used for all of the provided addresses"
 	let is_symbols_set=1
+# extract the debug symbols package
 elif [[ $SYMBOLS_PACKAGE =~ \.t?gz$ ]]; then
 	FILE=$(basename $SYMBOLS_PACKAGE)
 	echo "File "$FILE" is compressed as .tar.gz / .tgz"
@@ -496,9 +501,12 @@ elif [[ $SYMBOLS_PACKAGE =~ \.t?gz$ ]]; then
 	    case $yn in
 	        Yes ) 
 			cd $(dirname $SYMBOLS_PACKAGE) &> /dev/null
-			tar zxvf $FILE
-			sync
 			SYMBOLS_PACKAGE=$(sed 's/\.ta*r*\.*gz$//' <(echo $SYMBOLS_PACKAGE))
+			mkdir $SYMBOLS_PACKAGE
+			echo "Extracting files..."
+			tar -zxvf $FILE -C $SYMBOLS_PACKAGE
+			sync
+			echo "Done extracting"
 			cd - &> /dev/null
 			echo "SYMBOLS_PACKAGE set is "$SYMBOLS_PACKAGE
 			CONTENTS=$(find $SYMBOLS_PACKAGE -name *contents)
