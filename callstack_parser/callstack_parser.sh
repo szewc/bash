@@ -335,10 +335,6 @@ if [ -z $SUFFIX ]; then
 	        "Input suffix" ) 
 				echo "Input the suffix, special characters are allowed"
 				read -p "SUFFIX should be " -e SUFFIX
-				if [[ "$SUFFIX" == "" ]]; then
-					#SUFFIX=$'\\r'
-					SUFFIX=$(echo $'\n')
-				fi
 				break;;
 			*) echo "invalid option";;
 	    esac
@@ -588,8 +584,11 @@ else
 	fi
 	# applying offset
 	l=$(printf "%x\n" $((0x$j-0x$OFFSET)))
-	echo "Translating address "$l
-	addr2line -fsp  -e $SYMBOLS -a $l | c++filt >> stack.out
+	echo "Translating calculated address "$l
+	# printing vanilla line info
+	echo -e "---\ninput: $i" >> stack.out
+	# translating
+	addr2line -fsp  -e $SYMBOLS -a $l | c++filt | sed -e 's/^/output: /' >> stack.out
 fi
 }
 
@@ -637,6 +636,7 @@ done
 
 
 translate_finish() {
+echo "---" >> stack.out
 if [ ! -z "$l" ]; then
 	echo -e "----------\nDone\nTranslated stack trace is\n**********\n$(cat ./stack.out)\n**********\nIt has also been saved to ./stack.out"
 elif [ "$MANGLED" = 1 ]; then
