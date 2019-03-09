@@ -3,6 +3,7 @@
 ----
 ## Info
 Decodes process maps for specific backtrace and package with debug symbols (package number must correspond to backtrace).
+Note that this tool can also be used to translate addresses using unstripped library (in addition to debug symbols package and / or single debug file) - just load unstripped lib as single debug file.
 Can load addresses offset when provided with core dump (backtrace is still required).
 Finds relevant addresses via provided prefix and suffix, recognizes corresponding libs and their debug symbol files, translates it. 
 Also demangles c++ symbols.
@@ -52,11 +53,13 @@ The script can calculate the target address by subtracting the offset value from
 
 	Note: offset input by hand (value other than 0) works for single lib only. Some of the vendors (eg. MTK/TPV) provides backtraces with addresses already properly calculated (taking current offset into account).
 
-4. The **package** with debug symbols
+6. The **package** with debug symbols
 If not yet extracted, the script will try and extract it.
 Naming convention for it usually is "xxx-debug-symbols". Package build number must be the same as for the SDK for which the backtrace has been provided. You can provide the package in two ways:
 	- Provide path to the file.
 	- Select the file via GUI file manager.
+
+Note that this tool can also be used to translate addresses using unstripped library (in place of debug symbols package and / or single debug file) - just load unstripped lib as single debug file.
 
 ----
 ## Usage
@@ -92,15 +95,16 @@ where *--option* is:
   * offset value other than 0 works as intended for single lib only
 * `-m`, `--symbols` `"`*/path/file.debug*`"`
   * this flag is optional - provides the direct path to symbols for single library only
-* `-b`, `--symbols-package` `"`*/path/xxx-debug-symbols*`"`
+  * alternatively, you can just load unstripped lib
+* `-y`, `--symbols-package` `"`*/path/xxx-debug-symbols*`"`
 * `-c`, `--core` `"`*/path/core_dump*`"`
 * `-h`, `--help`
 
 ### 3. Combined
 Run the script with less than 3 flags (for files listed in Prepare section) provided.
 
-### 4. Batch mode
-Specify the variables in the script itself (first few rows).
+### 4. Manual mode
+Specify the variables in the script itself (first few lines of the script).
 
 ----
 ## Additional info
