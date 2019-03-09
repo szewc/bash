@@ -62,12 +62,12 @@ deps_check_addr2line() {
 which addr2line > /dev/null 2>&1
 INSTALLED=$?
 if [ $INSTALLED -eq 1 ]; then
-        echo "addr2line is not installed"
+    echo "addr2line is not installed"
 	echo "Install it from official repo?"
 	select yn in "Yes" "No"; do
 		case $yn in
-                Yes ) deps_install; break;;
-                No ) exit;;
+            Yes ) deps_install; break;;
+            No ) exit;;
 		esac
 	done
 fi
@@ -78,12 +78,12 @@ deps_check_cfilt() {
 which c++filt > /dev/null 2>&1
 INSTALLED=$?
 if [ $INSTALLED -eq 1 ]; then
-        echo "c++filt is not installed"
+    echo "c++filt is not installed"
 	echo "Install it from official repo?"
 	select yn in "Yes" "No"; do
 		case $yn in
-                Yes ) deps_install; break;;
-                No ) exit;;
+            Yes ) deps_install; break;;
+            No ) exit;;
 		esac
 	done
 fi
@@ -98,8 +98,8 @@ if [ $INSTALLED -eq 1 ]; then
 	echo "Install it from official repo?"
 	select yn in "Yes" "No"; do
 		case $yn in
-                Yes ) deps_install; break;;
-                No ) exit;;
+            Yes ) deps_install; break;;
+            No ) exit;;
 		esac
 	done
 fi
@@ -107,8 +107,8 @@ fi
 
 
 deps_install() {
-if [ "$EUID" -ne 0 ]
-	then echo "To install the dependencies please run as root" >&2
+if [ "$EUID" -ne 0 ]; then
+	echo "To install the dependencies please run as root" >&2
 	exit
 fi
 	apt install -y --no-install-recommends binutils
@@ -167,11 +167,11 @@ echo "Provide (paste or input by hand with autocomplete) the path to text file w
 echo "confirm with [ENTER]"
 read -e BACKTRACE
 eval BACKTRACE=$BACKTRACE
-	if [ ! -e "$BACKTRACE" ]
-		then
-		echo "File not found"
-		exit
-	fi
+if [ ! -e "$BACKTRACE" ]
+	then
+	echo "File not found"
+	exit
+fi
 core_evaluate
 prefix_store
 let is_backtrace_file=1
@@ -183,11 +183,11 @@ translate_file
 
 backtrace_store_manager() {
 BACKTRACE=$(dialog --stdout --title "Select the text file with backtrace" --fselect $PWD 14 50)
-	if [ ! -e "$BACKTRACE" ]
-		then
-		dialog --title "File not found" --clear --msgbox "$m" 10 50
-		exit
-	fi
+if [ ! -e "$BACKTRACE" ]
+	then
+	dialog --title "File not found" --clear --msgbox "$m" 10 50
+	exit
+fi
 core_evaluate
 prefix_store
 let is_backtrace_file=1
@@ -211,11 +211,11 @@ else
 	echo "(OPTIONAL) Do you want to load core dump file?"
 	echo "It will be used to get offset values"
 	select option in "No" "Yes"; do
-	        case $option in
-	        	"No" ) prefix_store; break;;
-	        	"Yes" ) core_select; break;;
-	            *) echo "invalid option";;
-	        esac
+        case $option in
+        	"No" ) prefix_store; break;;
+        	"Yes" ) core_select; break;;
+            *) echo "invalid option";;
+        esac
 	done
 fi
 }
@@ -263,8 +263,7 @@ echo "Provide (paste or input by hand with autocomplete) the path to the core du
 echo "Confirm with [ENTER]"
 read -e CORE
 eval CORE=$CORE
-if [ ! -e "$CORE" ]
-	then
+if [ ! -e "$CORE" ]; then
 	echo "File not found"
 	exit
 else
@@ -283,8 +282,7 @@ translate_file
 
 core_store_manager() {
 CORE=$(dialog --stdout --title "Select the core dump file" --fselect $PWD 14 50)
-if [ ! -e "$CORE" ]
-	then
+if [ ! -e "$CORE" ]; then
 	dialog --title "File not found" --clear --msgbox "$m" 10 50
 	exit
 else 
@@ -304,18 +302,18 @@ translate_file
 prefix_store() {
 # select address prefix using default or user input
 if [ -z $PREFIX ]; then 
-echo "Select the prefix for the addresses to be recognized by."
-echo "For example if the addresses are presented starting with '0x', it should be input as prefix."
-select option in "Use default prefix (+0x" "Input prefix"; do
-	case $option in
-                "Use default prefix (+0x" ) 
-			PREFIX="(+0x";
-			break;;
-                "Input prefix" ) 
-			echo "Input the prefix, special characters are allowed";
-			read -p "PREFIX should be " -e PREFIX;
-			break;;
-		*) echo "invalid option";;
+	echo "Select the prefix for the addresses to be recognized by."
+	echo "For example if the addresses are presented starting with '0x', it should be input as prefix."
+	select option in "Use default prefix (+0x" "Input prefix"; do
+		case $option in
+	        "Use default prefix (+0x" ) 
+				PREFIX="(+0x";
+				break;;
+	       "Input prefix" ) 
+				echo "Input the prefix, special characters are allowed";
+				read -p "PREFIX should be " -e PREFIX;
+				break;;
+			*) echo "invalid option";;
         esac
 	done
 fi
@@ -328,22 +326,28 @@ suffix_store
 suffix_store() {
 # select address suffix using default or user input
 if [ -z $SUFFIX ]; then 
-echo "Select the suffix for the addresses to be recognized by"
-select option in "Use default suffix )" "Input suffix"; do
-	case $option in
-        "Use default suffix )" )
-			SUFFIX=")";
-			break;;
-        "Input suffix" ) 
-			echo "Input the suffix, special characters are allowed"
-			read -p "SUFFIX should be " -e SUFFIX
-			break;;
-		*) echo "invalid option";;
-        esac
+	echo "Select the suffix for the addresses to be recognized by"
+	select option in "Use default suffix )" "Input suffix"; do
+		case $option in
+	        "Use default suffix )" )
+				SUFFIX=")";
+				break;;
+	        "Input suffix" ) 
+				echo "Input the suffix, special characters are allowed"
+				read -p "SUFFIX should be " -e SUFFIX
+				if [[ "$SUFFIX" == "" ]]; then
+					#SUFFIX=$'\\r'
+					SUFFIX=$(echo $'\n')
+				fi
+				break;;
+			*) echo "invalid option";;
+	    esac
 	done
 fi
 # properly escape [ and ]
-SUFFIX=$(echo "$SUFFIX" | sed 's/\]/\\\]/')
+if [ ! -z $SUFFIX ]; then 
+	SUFFIX=$(echo "$SUFFIX" | sed 's/\]/\\\]/')
+fi
 echo "SUFFIX set is ""$SUFFIX"
 offset_evaluate
 }
@@ -372,26 +376,26 @@ echo "This is single value mode only. To dynamically load offset values, load th
 echo "Select option 1. (default, offset=0) if you don't want to calculate it."
 select option in "Use default offset 0" "Input offset"; do
 	case $option in
-            "Use default offset 0" )
-				OFFSET="0"
-				echo "OFFSET set is "$OFFSET
-				break;;
-            "Input offset" ) 
-				echo "Input the offset value, in hexadecimal notation."
-				echo "Example offset: 0c3a9"
-				echo "Do not use a leading value like '0x'. Case sensitive."
-				echo "Offset value will be subtracted from the address value."
-				read -p "OFFSET should be " -e OFFSET
-			if [ ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]; then
-				let offset_invalid=1
-				echo "Do not use a leading value like 0x"
-				sleep 2
-				offset_evaluate
-			else
-				echo "OFFSET set is ""$OFFSET"
-			fi
+        "Use default offset 0" )
+			OFFSET="0"
+			echo "OFFSET set is "$OFFSET
 			break;;
-		* ) echo "invalid option";;
+        "Input offset" ) 
+			echo "Input the offset value, in hexadecimal notation."
+			echo "Example offset: 0c3a9"
+			echo "Do not use a leading value like '0x'. Case sensitive."
+			echo "Offset value will be subtracted from the address value."
+			read -p "OFFSET should be " -e OFFSET
+				if [ ! -z $(echo "$OFFSET" | grep -o '\b0\x') ]; then
+					let offset_invalid=1
+					echo "Do not use a leading value like 0x"
+					sleep 2
+					offset_evaluate
+				else
+					echo "OFFSET set is ""$OFFSET"
+				fi
+			break;;
+		*) echo "invalid option";;
 	esac
 done
 }
@@ -451,8 +455,8 @@ else
 		select option in "Provide path to debug package" "Select the debug package via file manager"; do
 		    case $option in
 		        "Provide path to debug package" ) symbols_store_path; break;;
-			"Select the debug package via file manager" ) symbols_store_manager; break;;
-			*) echo "invalid option";;
+				"Select the debug package via file manager" ) symbols_store_manager; break;;
+				*) echo "invalid option";;
 		    esac
 		done
 	symbols_evaluate
@@ -468,10 +472,10 @@ echo "eg. /path/to/xxx-debug-symbols[.tar.gz]"
 echo "confirm with [ENTER]"
 read -e SYMBOLS_PACKAGE
 eval SYMBOLS_PACKAGE=$SYMBOLS_PACKAGE
-	if [ ! -e $SYMBOLS_PACKAGE ]; then
-		echo "Not found"
-		exit
-	fi
+if [ ! -e $SYMBOLS_PACKAGE ]; then
+	echo "Not found"
+	exit
+fi
 }
 
 
@@ -479,10 +483,10 @@ symbols_store_manager() {
 # select filename using dialog
 # store it to $SYMBOLS_PACKAGE
 SYMBOLS_PACKAGE=$(dialog --stdout --title "Select the folder or file with debug symbols" --fselect $PWD 14 50)
-	if [ ! -e "$SYMBOLS_PACKAGE" ]; then
-		dialog --title "Not found" --clear --msgbox "$m" 10 50
-		exit
-	fi
+if [ ! -e "$SYMBOLS_PACKAGE" ]; then
+	dialog --title "Not found" --clear --msgbox "$m" 10 50
+	exit
+fi
 }
 
 
@@ -500,23 +504,23 @@ elif [[ $SYMBOLS_PACKAGE =~ \.t?gz$ ]]; then
 	select yn in "Yes" "No"; do
 	    case $yn in
 	        Yes ) 
-			cd $(dirname $SYMBOLS_PACKAGE) &> /dev/null
-			SYMBOLS_PACKAGE=$(sed 's/\.ta*r*\.*gz$//' <(echo $SYMBOLS_PACKAGE))
-			mkdir $SYMBOLS_PACKAGE
-			echo "Extracting files..."
-			tar -zxvf $FILE -C $SYMBOLS_PACKAGE
-			sync
-			echo "Done extracting"
-			cd - &> /dev/null
-			echo "SYMBOLS_PACKAGE set is "$SYMBOLS_PACKAGE
-			CONTENTS=$(find $SYMBOLS_PACKAGE -name *contents)
-			echo "Main addressing file is "$CONTENTS
-			LIBS=$(cat $CONTENTS | grep -o -P '[\S]*.sym$' | sed 's/\.sym//')
-			echo "Listed LIBS with available symbols are: "$LIBS
-			break;;
+				cd $(dirname $SYMBOLS_PACKAGE) &> /dev/null
+				SYMBOLS_PACKAGE=$(sed 's/\.ta*r*\.*gz$//' <(echo $SYMBOLS_PACKAGE))
+				mkdir $SYMBOLS_PACKAGE
+				echo "Extracting files..."
+				tar -zxvf $FILE -C $SYMBOLS_PACKAGE
+				sync
+				echo "Done extracting"
+				cd - &> /dev/null
+				echo "SYMBOLS_PACKAGE set is "$SYMBOLS_PACKAGE
+				CONTENTS=$(find $SYMBOLS_PACKAGE -name *contents)
+				echo "Main addressing file is "$CONTENTS
+				LIBS=$(cat $CONTENTS | grep -o -P '[\S]*.sym$' | sed 's/\.sym//')
+				echo "Listed LIBS with available symbols are: "$LIBS
+				break;;
 	        No ) 
-			echo "Program requires an extracted package, exiting."
-			exit;;
+				echo "Program requires an extracted package, exiting."
+				exit;;
 	    esac
 	done
 else	
